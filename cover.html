@@ -1,0 +1,407 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>handler: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">assignment/handler/handler.go (71.9%)</option>
+				
+				<option value="file1">assignment/repository/repository.go (100.0%)</option>
+				
+				<option value="file2">assignment/service/service.go (95.8%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package handler
+
+import (
+        "assignment/model"
+        "assignment/service"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "regexp"
+        "strings"
+)
+
+var (
+        getAll                  = regexp.MustCompile(`^[\/]*$`)
+        getWalletByUserName     = regexp.MustCompile(`^\/[a-z]*$`)
+        createWalletforUserName = regexp.MustCompile(`^\/[a-z]*$`)
+        updateWalletBalance     = regexp.MustCompile(`^\/[a-z]*$`)
+)
+
+type IHandler interface {
+        ServeHTTP(w http.ResponseWriter, r *http.Request)
+        GetAll(w http.ResponseWriter, r *http.Request)
+        Get(w http.ResponseWriter, r *http.Request)
+        Create(w http.ResponseWriter, r *http.Request)
+        Update(w http.ResponseWriter, r *http.Request)
+}
+
+type Handler struct {
+        service service.IWalletService
+}
+
+func NewHandler(service service.IWalletService) IHandler <span class="cov8" title="1">{
+        return &amp;Handler{service: service}
+}</span>
+
+type UpdateBalanceRequest struct {
+        Balance int `json:"balance"`
+}
+
+func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        wallets := h.service.GetAll()
+        response := model.Response{
+                Message: "",
+                Data:    wallets,
+        }
+        jsonBytes, err := json.Marshal(response)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+        w.Write(jsonBytes)</span>
+}
+
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        username := h.findStringSubmatch(r.URL.Path)
+        wallet, err := h.service.Get(username)
+
+        response := model.Response{
+                Message: "",
+                Data:    nil,
+        }
+
+        if err != nil </span><span class="cov0" title="0">{
+                if err.Error() == "User not found! " </span><span class="cov0" title="0">{
+                        w.WriteHeader(http.StatusNotFound)
+                }</span> else<span class="cov0" title="0"> {
+                        w.WriteHeader(http.StatusInternalServerError)
+                }</span>
+                <span class="cov0" title="0">response.Message = err.Error()</span>
+        } else<span class="cov8" title="1"> {
+                response.Data = wallet
+        }</span>
+
+        <span class="cov8" title="1">jsonBytes, err := json.Marshal(response)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusOK)
+        w.Write(jsonBytes)</span>
+}
+
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        username := h.findStringSubmatch(r.URL.Path)
+        wallet := h.service.Create(username)
+        response := model.Response{
+                Message: "",
+                Data:    wallet,
+        }
+        jsonBytes, err := json.Marshal(response)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.WriteHeader(http.StatusCreated)
+        w.Write(jsonBytes)</span>
+}
+
+func (h *Handler) Update(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        username := h.findStringSubmatch(r.URL.Path)
+        balanceRequest := UpdateBalanceRequest{}
+        err := json.NewDecoder(r.Body).Decode(&amp;balanceRequest)
+        if err != nil </span><span class="cov0" title="0">{
+                http.Error(w, err.Error(), http.StatusBadRequest)
+                return
+        }</span>
+
+        <span class="cov8" title="1">updatedWallet, err := h.service.Update(username, balanceRequest.Balance)
+
+        response := model.Response{
+                Message: "",
+                Data:    nil,
+        }
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusInternalServerError)
+                response.Message = err.Error()
+
+        }</span> else<span class="cov8" title="1"> {
+                response.Data = updatedWallet
+        }</span>
+        <span class="cov8" title="1">jsonBytes, err := json.Marshal(response)
+        if err != nil </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+        }</span>
+        <span class="cov8" title="1">w.Write(jsonBytes)
+        return</span>
+
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        w.Header().Set("content-type", "application/json")
+        switch </span>{
+        case r.Method == http.MethodGet &amp;&amp; getAll.MatchString(r.URL.Path):<span class="cov8" title="1">
+                h.GetAll(w, r)
+                return</span>
+        case r.Method == http.MethodGet &amp;&amp; getWalletByUserName.MatchString(r.URL.Path):<span class="cov8" title="1">
+                h.Get(w, r)
+                return</span>
+        case r.Method == http.MethodPut &amp;&amp; createWalletforUserName.MatchString(r.URL.Path):<span class="cov8" title="1">
+                h.Create(w, r)
+                return</span>
+        case r.Method == http.MethodPost &amp;&amp; updateWalletBalance.MatchString(r.URL.Path):<span class="cov8" title="1">
+                h.Update(w, r)
+                return</span>
+        default:<span class="cov0" title="0">
+                fmt.Println("istek karşılanamadı")
+                return</span>
+        }
+}
+
+func (h *Handler) findStringSubmatch(path string) string <span class="cov8" title="1">{
+        return strings.TrimPrefix(path, "/")
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package repository
+
+import (
+        "assignment/model"
+        "errors"
+)
+
+type IRepository interface {
+        GetAll() map[string]*model.Wallet
+        GetByUsername(username string) (*model.Wallet, error)
+        Create(wallet model.Wallet) *model.Wallet
+        Update(wallet model.Wallet) *model.Wallet
+}
+
+type Repository struct {
+        Wallet map[string]*model.Wallet
+}
+
+func NewRepository() IRepository <span class="cov8" title="1">{
+        return &amp;Repository{
+                Wallet: map[string]*model.Wallet{
+                        "pinpon": {
+                                Username: "pinpon",
+                                Balance:  100,
+                        },
+                        "saliha": {
+                                Username: "Saliha",
+                                Balance:  16,
+                        },
+                },
+        }
+}</span>
+
+func (r *Repository) Update(wallet model.Wallet) *model.Wallet <span class="cov8" title="1">{
+        r.Wallet[wallet.Username] = &amp;model.Wallet{
+                Username: wallet.Username,
+                Balance:  wallet.Balance,
+        }
+        return r.Wallet[wallet.Username]
+}</span>
+
+func (r *Repository) GetAll() map[string]*model.Wallet <span class="cov8" title="1">{
+        a := r.Wallet
+        return a
+}</span>
+func (r *Repository) GetByUsername(username string) (*model.Wallet, error) <span class="cov8" title="1">{
+        value, exist := r.Wallet[username]
+        if !exist </span><span class="cov8" title="1">{
+                return nil, errors.New("User not found! ")
+        }</span>
+        <span class="cov8" title="1">return value, nil</span>
+}
+
+func (r *Repository) Create(wallet model.Wallet) *model.Wallet <span class="cov8" title="1">{
+        r.Wallet[wallet.Username] = &amp;model.Wallet{
+                Username: wallet.Username,
+                Balance:  wallet.Balance,
+        }
+        return r.Wallet[wallet.Username]
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package service
+
+import (
+        "assignment/model"
+        "assignment/repository"
+        "errors"
+        "fmt"
+)
+
+type IWalletService interface {
+        GetAll() []*model.Wallet
+        Get(username string) (*model.Wallet, error)
+        Create(username string) *model.Wallet
+        Update(username string,balance int) (*model.Wallet,error)
+}
+
+type service struct {
+        repo                 repository.IRepository
+        InitialBalanceAmount int
+        MinimumBalanceAmount int
+}
+
+func NewService(repo repository.IRepository,
+        initialBalanceAmount int,
+        minimumBalanceAmount int) IWalletService <span class="cov8" title="1">{
+        return &amp;service{
+                repo:                 repo,
+                InitialBalanceAmount: initialBalanceAmount,
+                MinimumBalanceAmount: minimumBalanceAmount,
+        }
+
+}</span>
+
+func (s service) GetAll() []*model.Wallet <span class="cov8" title="1">{
+        walletsMap := s.repo.GetAll()
+        wallets := make([]*model.Wallet, 0)
+
+        for _, wallet := range walletsMap </span><span class="cov8" title="1">{
+                wallets = append(wallets, wallet)
+        }</span>
+        <span class="cov8" title="1">return wallets</span>
+}
+
+func (s service) Get(username string) (*model.Wallet, error) <span class="cov8" title="1">{
+        wallet, err := s.repo.GetByUsername(username)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">return wallet, nil</span>
+}
+
+func (s service) Create(username string) *model.Wallet <span class="cov8" title="1">{
+        existingWallet,err:=s.repo.GetByUsername(username)
+        if err==nil </span><span class="cov8" title="1">{
+                return existingWallet
+        }</span>
+        <span class="cov8" title="1">wallet:=model.Wallet{
+                Username: username,
+                Balance:  s.InitialBalanceAmount,
+        }
+
+        return s.repo.Create(wallet)</span>
+}
+
+func (s service) Update(username string,balance int) (*model.Wallet,error) <span class="cov8" title="1">{
+        existingWallet, err :=s.repo.GetByUsername(username)
+        if err!=nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov8" title="1">balanceResult:=existingWallet.Balance+(balance)
+
+        if  balanceResult&lt;s.MinimumBalanceAmount</span><span class="cov8" title="1">{
+                return nil, errors.New(fmt.Sprintf("User's balance can not be less then %d",s.MinimumBalanceAmount))
+        }</span>
+        <span class="cov8" title="1">wallet:=model.Wallet{
+                Username: username,
+                Balance: balanceResult,
+        }
+        updatedWallet:=s.repo.Update(wallet)
+        return updatedWallet,nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
